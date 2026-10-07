@@ -32,6 +32,19 @@ Doctor 不会因为你说“我头疼”，就直接告诉你吃什么药。
 
 ------
 
+
+## 📦 安装
+
+将 `Doctor` Skill 放入 Agent 的 Skills 目录，并确保 Agent 能够正常加载该 Skill。
+
+或者直接告诉 Agent：
+
+```text
+帮助我安装skill：https://github.com/secr0t/Docter
+```
+
+------
+
 ## 🎯 Doctor 负责什么？
 
 Doctor 只负责一件事情：
@@ -102,17 +115,7 @@ Grill-me 的任务不是重新替 Doctor 做一遍普通诊断，而是：
 
 
 
-------
 
-## 📦 安装
-
-将 `Doctor` Skill 放入 Agent 的 Skills 目录，并确保 Agent 能够正常加载该 Skill。
-
-或者直接告诉 Agent：
-
-```text
-帮助我安装skill：https://github.com/secr0t/Docter
-```
 
 如果 Doctor 已经被 Agent 自动加载，则无需额外指定。
 
