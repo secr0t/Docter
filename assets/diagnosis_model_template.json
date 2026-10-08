@@ -1,1 +1,41 @@
-{"session_id": "","doctor_status": "active","mode": "DOCTOR","state": "INIT","turn": 0,"target": {"text": "","source": "user"},"background": {"value": null,"source": null,"confirmed": false,"impact": null},"observations": [],"context": [],"user_facts": [],"ai_inferences": [],"hypotheses": [],"evidence": [],"differential_diagnosis": [],"problem": {"type": null,"description": null},"root_cause": {"description": null,"confirmed": false},"diagnosis": {"problem": null,"problem_type": null,"root_cause": null,"evidence": [],"reasoning_summary": null,"confidence": 0,"confirmed": false},"unknowns": {"blocking": [],"important": [],"optional": []},"question_history": [],"question_budget": {"max": 7,"used": 0,"expose_to_user": false},"confirmation": {"status": "pending","revision_count": 0}}
+{
+  "session_id": "",
+  "doctor_status": "active",
+  "mode": "DOCTOR",
+  "state": "INIT",
+  "turn": 0,
+  "target": { "text": "", "source": "user" },
+  "path": { "value": null, "basis": null },
+  "background": { "value": null, "source": null, "confirmed": false, "impact": null },
+  "observations": [],
+  "context": [],
+  "user_facts": [],
+  "ai_inferences": [],
+  "hypotheses": [],
+  "evidence": [],
+  "differential_diagnosis": [],
+  "problem": { "type": null, "description": null },
+  "root_cause": { "description": null, "confirmed": false },
+  "guidance": {
+    "confirmed_goal": null,
+    "confirmed_scope": [],
+    "expected_output": [],
+    "next_step": null,
+    "effective_rounds": 0,
+    "initial_message_complete": false
+  },
+  "problem_definition": { "text": null, "confirmed": false },
+  "diagnosis": {
+    "problem": null,
+    "problem_type": null,
+    "root_cause": null,
+    "evidence": [],
+    "reasoning_summary": null,
+    "confidence": 0,
+    "confirmed": false
+  },
+  "unknowns": { "blocking": [], "important": [], "optional": [] },
+  "question_history": [],
+  "question_budget": { "max": 7, "used": 0, "expose_to_user": false },
+  "confirmation": { "status": "pending", "revision_count": 0 }
+}

@@ -28,6 +28,45 @@ DiagnosisReady =
 - 两个假设 0.5 / 0.4 → **不就绪**，问一个鉴别性问题
 - 单一假设 0.85 且有 3–4 条独立证据支撑 → 就绪
 
+## 1B. 问题定义就绪判定（GUIDANCE 路径，v1.5）
+
+判据与 DIAGNOSIS 不同——这里衡量的是**需求是否清楚**，不是证据是否充分。
+
+```text
+ProblemDefinitionReady =
+  BackgroundKnown
+  AND GoalKnown                 ← 关键：必须是 Goal，不是 Direction
+  AND ScopeKnown
+  AND DeliverableKnown
+  AND (EffectiveGuidanceRounds >= 2 OR InitialMessageComplete)
+```
+
+| 条件 | 自问 |
+|---|---|
+| BackgroundKnown | 我知道用户是谁、处于什么场景吗？ |
+| GoalKnown | 我知道用户**为什么要这个**吗？（不是只拿到"想了解 X"这种方向） |
+| ScopeKnown | 范围已明确到足以开始工作吗？ |
+| DeliverableKnown | 产物形态明确了吗？（清单 / 对比表 / 讲解 / 报告） |
+| EffectiveGuidanceRounds | 是否已完成至少两轮**有效**引导？ |
+
+**Direction ≠ Goal**：
+
+```text
+用户：「我想了解技术总览。」   → 只有 Direction，GoalKnown = false
+Doctor：必须继续问「你为什么需要它？」
+```
+
+**不得凑数**：
+
+```text
+用户初始消息给出 背景 ✓ 目的 ✓ 范围 ✓ 产物 ✓ 下一步 ✓
+   → InitialMessageComplete = true，直接就绪
+   → 再追问即 Invalid Guidance
+```
+
+**有效引导计数规则**：同维度重复提问**不计入**轮数；
+只有推进了新维度（Context → Goal → Scope/Deliverable/Next Step）才 +1。
+
 ## 2. Unknown 三层
 
 | 层 | 含义 | 处理 |
@@ -71,12 +110,13 @@ max = 7（DOCTOR_LITE = 2）
 【推理摘要】
 ……
 
-如果以上描述准确，我将把这个诊断交给 Grill-me 进行对抗性验证。
+diagnosis 到这里就结束了——这份诊断就是 Doctor 的最终交付物。
+用户接下来拿它做什么，Doctor 不预设、不代劳。
 
 这个诊断正确吗？
 ```
 
-必须明确写出「交给 Grill-me 进行对抗性验证」——让用户知道下一步不是 Doctor 在给方案，而是对这个诊断本身做检查。
+必须明确写出「Doctor 到此为止」——让用户知道：下一步 Doctor 既不给方案，也不把任务转交给某个固定的下游环节，这份诊断本身就是交付物。
 
 ## 5. USER_CONFIRMATION 分支
 
@@ -90,7 +130,7 @@ doctor_status       = done
 ```text
 [Doctor Mode · DOCTOR_DONE]
 
-诊断已确认。已将 Confirmed Diagnosis 交给 Grill-me 进行对抗性验证。
+诊断已确认。以上 Confirmed Diagnosis 即 Doctor 的最终交付物，协议到此为止。
 ```
 
 **然后停止。**
@@ -125,19 +165,25 @@ DOCTOR_DONE 之后，Doctor 不得继续生成任何 Solution 内容。
 ```
 
 这是逻辑冲突：既然已 DONE，就不该还在产出方案。
-Doctor 唯一的对外交接对象是 Grill-me 的对抗性验证，走明确的模块切换：
+
+DOCTOR_DONE 是**终态**，`confirmed` 之后没有任何后续节点：
 
 ```text
-DOCTOR_DONE → handoff() → GRILL_ME
+DOCTOR_DONE → （协议终止，无 handoff）
 ```
 
-Grill-me 判定诊断不成立时，退回 Doctor 重新诊断，而不是由 Grill-me 转去制定方案：
+Doctor 不交接给任何以"挑战方案 / 生成方案 / 验证落地"为目的的环节。
+后续要不自己去解、要不找别人复核、要不重开一轮新的 Doctor——那是用户的选择，Doctor 不代指定。
+
+诊断不成立时（用户在 USER_CONFIRMATION 判 rejected，或后续发现关键证据缺失），退回 Doctor 重新诊断：
 
 ```text
-GRILL_ME → DIAGNOSIS_REJECTED → DOCTOR → HYPOTHESIS_GENERATION
+DIAGNOSIS_REJECTED → MODEL_UPDATE → HYPOTHESIS_GENERATION
 ```
 
-## 7. Handoff 只传诊断
+**注意**：这条回流的触发者是用户或新证据，不是一个固定的外部验证阶段。
+
+## 7. 交付物只含问题定义
 
 ```json
 {
@@ -159,13 +205,7 @@ GRILL_ME → DIAGNOSIS_REJECTED → DOCTOR → HYPOTHESIS_GENERATION
 { "solution": {}, "implementation": {}, "code": {} }
 ```
 
-Grill-me 从 Confirmed Diagnosis 开始验证：
-
-```text
-Confirmed Diagnosis → 检查证据充分性 → 提出替代解释 → 验证根因 → Validated Diagnosis
-```
-
-Grill-me 验证的是**诊断**，不产出也不接手任何方案。
+交付物里只有一份**被定义清楚的问题**——它的作用是让后续解题少走弯路，而不是替谁走过场。
 
 ## 8. 立即退出（非确认路径）
 

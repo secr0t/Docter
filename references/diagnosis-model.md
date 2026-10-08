@@ -1,4 +1,4 @@
-# Diagnosis Model v1.3
+# Diagnosis Model v1.5
 
 ## 1. Schema
 
@@ -89,14 +89,51 @@
 | `doctor_status` | `active` → `done`（仅 confirmed 后置） |
 | `question_budget.expose_to_user` | **false**，永不显示「第 X/7 问」 |
 
-## 3. 禁止保存的字段
+## 3. 字段边界：需求侧允许，方案侧禁止
+
+### 3.1 允许保存（需求侧，v1.5）
+
+```json
+{
+  "path": "GUIDANCE",
+  "confirmed_goal": "建立 AI × 渗透/漏洞挖掘的技术路线地图",
+  "confirmed_scope": ["主要实现方向", "实现方式", "落地成熟度"],
+  "expected_output": ["分类清单", "对比表"],
+  "next_step": "判断哪些路线值得自己实现"
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `path` | `GUIDANCE` / `DIAGNOSIS`，由 PATH_CLASSIFICATION 判定 |
+| `confirmed_goal` | 用户真正想达成的目标（不是方向） |
+| `confirmed_scope` | 已确认的讨论范围 |
+| `expected_output` | 期望的产物**形态** |
+| `next_step` | 用户拿到结果后准备做什么 |
+
+### 3.2 禁止保存（方案侧）
 
 ```text
 solution    fix    implementation    code    architecture
 remediation    tech_stack（除非属于诊断约束）    fix_plan    checklist
 ```
 
-原因：跨轮次状态机一旦存了方案，下一轮必然泄漏；且会让 Grill-me 失去可供验证的纯粹对象。
+### 3.3 判定规则
+
+```text
+字段内容描述"用户要什么"   → 允许（需求侧）
+字段内容描述"这件事怎么做" → 禁止（方案侧），删除
+```
+
+```text
+expected_output = "分类清单 + 对比表"        ✅
+expected_output = "用 React 做一个对比网站"  ❌ 落成方案，删除
+
+next_step = "判断哪些路线值得自己实现"        ✅
+next_step = "先搭 Flask 后端再做前端"        ❌ 落成方案，删除
+```
+
+原因：跨轮次状态机一旦存了方案，下一轮必然泄漏；且会让"这到底是问题定义还是解决方案"变得无法判断。
 
 ## 4. 子结构
 
@@ -187,22 +224,41 @@ confirmed = true, status = "confirmed" → 转入 user_facts
 ## 6. 状态机
 
 ```text
-INIT → PREFLIGHT → TARGET_ANALYSIS → BACKGROUND_ANALYSIS
-     → OBSERVATION_EXTRACTION → HYPOTHESIS_GENERATION
-     → EVIDENCE_COLLECTION → DIFFERENTIAL_DIAGNOSIS
-     → ROOT_CAUSE_ANALYSIS → DIAGNOSIS_READY
-     → USER_CONFIRMATION
-          ├── rejected  → MODEL_UPDATE → HYPOTHESIS_GENERATION
-          └── confirmed → DOCTOR_DONE → GRILL_ME
-               │
-               GRILL_ME
-                 ├── 诊断成立 → VALIDATED_DIAGNOSIS（终态）
-                 └── 诊断不成立 → DIAGNOSIS_REJECTED → HYPOTHESIS_GENERATION
+INIT → PREFLIGHT → PATH_CLASSIFICATION
+     ↓
+ ┌───┴────────────────────────┐
+GUIDANCE                     DIAGNOSIS
+CONTEXT_ROUND                BACKGROUND_ANALYSIS
+ ↓                            ↓
+GOAL_ROUND                   OBSERVATION_EXTRACTION
+ ↓                            ↓
+SCOPE_ROUND（必要时）         HYPOTHESIS_GENERATION
+ ↓                            ↓
+PROBLEM_DEFINITION_READY     EVIDENCE_COLLECTION
+ ↓                            ↓
+USER_CONFIRMATION            DIFFERENTIAL_DIAGNOSIS
+ │                            ↓
+ │                           ROOT_CAUSE_ANALYSIS
+ │                            ↓
+ │                           DIAGNOSIS_READY
+ │                            ↓
+ │                           USER_CONFIRMATION
+ │                            ├── rejected  → MODEL_UPDATE
+ │                            │               → HYPOTHESIS_GENERATION
+ └─────────────┬──────────────┘
+               ↓
+          DOCTOR_DONE（终态）
+               ↓
+ ┌─────────────┴─────────────┐
+GUIDANCE                    DIAGNOSIS
+正式回答 + Answer Drift      协议终止
+                            （无后续节点）
 ```
 
 `OBSERVATION_EXTRACTION` 在部分文档中记作 `SYMPTOM_IDENTIFICATION`，同一状态。
 
-**状态机中不存在 Solution 状态。**
+**状态机中不存在 Solution 状态，也不存在任何方案验证阶段。** DOCTOR_DONE 是唯一终态；
+诊断被否决时的回流触发者是用户或新证据（`USER_CONFIRMATION.rejected → MODEL_UPDATE → HYPOTHESIS_GENERATION`），不是某个固定的下游环节。
 
 ## 7. 每轮更新
 

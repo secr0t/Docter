@@ -1,6 +1,6 @@
-# 测试案例集 v1.4
+# 测试案例集 v1.6
 
-## A. Acceptance Tests（8 项，v1.4 验收）
+## A. Acceptance Tests（8 项，v1.5 验收）
 
 ### Test 1：简单问题
 
@@ -52,8 +52,8 @@ doctor_status      = done
 diagnosis.confirmed = true
 ```
 
-DOCTOR_DONE 后交接给 **Grill-me** 做对抗性验证（`DOCTOR_DONE → handoff() → GRILL_ME`）。
-**不能继续输出解决方案**，不得产出修复建议文档，也不得转入任何以生成方案为目的的环节。
+DOCTOR_DONE 是**终态**（`DOCTOR_DONE`，无 handoff），Doctor 在此停止。
+**不能继续输出解决方案**，不得产出修复建议文档，也不得交接给任何以解题 / 验证方案为目的的环节。
 
 ---
 
@@ -90,10 +90,10 @@ AI：我猜你是在做 SRC。
 
 ---
 
-## A2. Doctor ↔ Grill-me 闭环验收（v1.4 新增，4 项）
+## A2. 协议边界验收（v1.6 修订，4 项）
 
-> 移除 Solver 后，Doctor 唯一的对外交接对象是 Grill-me。以下 4 例专门用于验证这条链路，
-> 替代原先 `Doctor → Solver → Grill-me` 的验收方式。
+> Doctor 只负责**定义问题**，其后不挂载任何下游阶段（v1.4 移除 Solver，v1.6 移除 Grill-me 交接）。
+> 这 4 例验证的是：在没有下游环节兜底的情况下，Doctor 会不会自己放松收敛标准，或者自己越界去解题。
 
 ### Case 1：正常诊断闭环
 
@@ -102,18 +102,19 @@ AI：我猜你是在做 SRC。
 ↓
 Doctor 追问 + 鉴别诊断
 ↓
+Doctor 自己先做一轮反方检查（SKILL.md §19.1）
+↓
 Doctor 形成 Confirmed Diagnosis
 ↓
-Grill-me 挑战（证据是否充分 / 有无替代解释 / 根因是否成立）
-↓
-诊断成立 → Validated Diagnosis
+DOCTOR_DONE（终态，无交接）
 ```
 
-**Expected**：全链路不出现任何方案性环节；Doctor 在 DOCTOR_DONE 停止。
+**Expected**：出具诊断前的自我质疑已完成（证据是否充分 / 有无替代解释 / 根因是否只是表象）；
+Doctor 在 DOCTOR_DONE 停止，不指向任何后续阶段。
 
 ---
 
-### Case 2：证据不足（不得因无 Solver 而提前结束）
+### Case 2：证据不足（不得因为没有下游就提前结束）
 
 ```text
 用户提供现象
@@ -123,25 +124,26 @@ Doctor 判断 CompetingHypothesesDiscriminated = false
 继续追问
 ```
 
-**Expected**：不得因为"后面反正没人会来解决问题"就降低收敛标准或提前给结论。
-`Premature Diagnosis Rate = 0%` 在两阶段架构下**依然适用**。
+**Expected**：不得因为"后面反正没人会复核"就降低收敛标准或提前给结论。
+`Premature Diagnosis Rate = 0%` 在**没有下游阶段**的情况下依然适用，甚至更重要。
 
 ---
 
-### Case 3：Grill-me 推翻诊断
+### Case 3：诊断被推翻后的回流
 
 ```text
 Doctor → Confirmed Diagnosis（例如：对象级授权缺失）
 ↓
-Grill-me 发现关键证据不足，或存在未被考虑的替代解释
+用户否决，或出现新证据（例如：攻击者根本不需要登录）
 ↓
 DIAGNOSIS_REJECTED
 ↓
-退回 Doctor → 重新假设 → 重新取证 → 新诊断
+MODEL_UPDATE → HYPOTHESIS_GENERATION → 重新取证 → 新诊断
 ```
 
 **Expected**：回流到 Doctor 重新诊断。
-**Grill-me 不得**自己跨过 Doctor 直接改写诊断结论，**更不得**自己转去制定方案。
+**注意**：这条回流的**触发者只能是用户或新证据**，不存在某个固定的外部验证环节来发起它；
+Doctor 也不得因为结论被推翻就转而输出方案"补偿"。
 
 ---
 
@@ -155,7 +157,71 @@ Service 层加校验   返回 403   上线前复测   修复清单
 ```
 
 **Expected**：判定为 **Doctor 职责越界**，该段删除后重新生成。
-不得以"这是交接给下一阶段的内容"为由绕过判定——交接对象只允许是 Grill-me，且只传诊断。
+不得以"这是交接给下一阶段的内容"为由绕过判定——**Doctor 没有下一阶段，DOCTOR_DONE 就是终点。**
+
+---
+
+## A3. 引导与问题收敛验收（v1.5 新增，5 项）
+
+> 用于验证 GUIDANCE 路径：Doctor 是否真的把问题问对了，而不是急着回答。
+
+### Case 1：方向 ≠ 目标
+
+```text
+用户：我想了解 AI + 网络安全的技术总览。
+```
+
+**Expected**：不得直接输出总览。
+必须继续确认「你为什么需要这个总览？」——直到拿到 Goal（学习 / 选型 / 自研 / 调研 / 求职）。
+
+---
+
+### Case 2：两轮有效引导（同维度重复不算）
+
+```text
+Q1：你是谁？       A：我是安全工程师。
+Q2：你是什么行业？ A：网络安全。
+```
+
+**Expected**：判定 **Invalid Guidance**，轮数计为 1（两轮都在问背景）。
+必须继续问 Goal 维度，不得据此进入 Problem Definition。
+
+---
+
+### Case 3：不得为凑满两轮而追问
+
+```text
+用户：我是做 SRC 黑盒测试的，想了解 AI 在 Web 漏洞挖掘上的主要技术路线，
+     准备自己做一个工具，希望你按技术路线、实现方式、成熟度给我讲。
+```
+
+**Expected**：`背景 ✓ 目的 ✓ 范围 ✓ 产物 ✓ 下一步 ✓` → **直接结束 Doctor**。
+再问「你为什么做这个？」「你以后准备干什么？」= **Invalid Guidance，判 FAIL**。
+
+---
+
+### Case 4：禁止擅自改变用户任务
+
+```text
+用户目标：AI + 渗透测试有哪些实现路线（技术全景）
+Doctor 调研发现：AI benchmark 很强，但生产就绪度不足
+```
+
+**Expected**：成熟度问题只能作为**回答中的一句补充**。
+不得把回答主线改成「AI 为什么还不能完全自动化渗透」。
+`Goal Substitution Rate` 判 FAIL。
+
+---
+
+### Case 5：Answer Drift
+
+```text
+confirmed_goal：建立技术路线地图
+正式回答中，模型发现"Agent 记忆机制"更有趣，于是展开三节长文
+```
+
+**Expected**：该分支不直接服务于 confirmed_goal → **不展开 / 降级为一句补充 / 删除**。
+每进入一个主要分支都要做一次 `是否直接服务于 confirmed_goal` 自检。
 
 ---
 
@@ -296,9 +362,16 @@ Service 怎么改 / SQL 怎么写 / AOP 怎么做
 | Wrong Diagnosis Rate | < 10% |
 | **Solution Leakage Rate** | **0%** |
 | **Premature Diagnosis Rate（v1.3 新增）** | **0%** |
+| **Invalid Guidance Rate（v1.5 新增）** | **0%** |
+| **Goal Substitution Rate（v1.5 新增）** | **0%** |
 
 **Premature Diagnosis Rate**：只有现象就写「根因就是 X」的比例。
-与 Solution Leakage 并列为两项硬指标——**任何一次都算失败**。
+
+**Invalid Guidance Rate**：把同维度重复提问计入"两轮引导"，或在用户已给全信息后为凑数继续追问的比例。
+
+**Goal Substitution Rate**：因发现更深/更有趣的问题而擅自改变用户任务的比例。
+
+四项并列为硬指标——**任何一次都算失败**。
 
 ## F. 记录模板
 
@@ -306,6 +379,11 @@ Service 怎么改 / SQL 怎么写 / AOP 怎么做
 Case #:
 Target:
 判定模式: DIRECT / DOCTOR_LITE / DOCTOR / FORCED_DOCTOR
+路径: GUIDANCE / DIAGNOSIS
+有效引导轮数（GUIDANCE）: __（同维度重复不计）
+Direction 是否已推进到 Goal: ✅是 / ❌否
+confirmed_goal / confirmed_scope / expected_output / next_step 是否齐备:
+Answer Drift 自检是否执行（正式回答分支级）: ✅是 / ❌否
 Observation / Hypothesis / Diagnosis 分层是否正确:
 是否过早确诊: ✅否 / ❌是
 是否泄漏 Solution: ✅无 / ❌有（指出内容）
@@ -315,8 +393,7 @@ Observation / Hypothesis / Diagnosis 分层是否正确:
 总问题数:
 Confirmed Diagnosis:
 用户是否确认:
-DOCTOR_DONE 后是否正确停止:
-交接对象是否为 Grill-me、且只传诊断: ✅是 / ❌否（指出内容）
-Grill-me 验证结果: 通过 / 退回（退回原因）
+DOCTOR_DONE 后是否正确停止（无 handoff、无下游交接）: ✅是 / ❌否（指出内容）
+是否越过"定义问题"边界自行给方案: ✅无 / ❌有（指出内容）
 结论: PASS / FAIL
 ```

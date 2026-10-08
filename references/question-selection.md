@@ -1,11 +1,12 @@
-# Question Selection v1.3
+# Question Selection v1.5
 
 ## 1. 评分模型
 
 ```text
 QuestionScore =
-DiagnosticImpact
-× HypothesisDiscrimination
+DiagnosticImpact                    ← DIAGNOSIS 主干
+× (HypothesisDiscrimination         ← DIAGNOSIS 权重最高
+   OR DimensionAdvance)             ← GUIDANCE 权重最高（v1.5 新增）
 × Uncertainty
 × Answerability
 ÷ InteractionCost
@@ -13,11 +14,19 @@ DiagnosticImpact
 
 | 维度 | 含义 | 打分提示 |
 |---|---|---|
-| **DiagnosticImpact** | 答案是否影响最终诊断 | 决定问题类型 = 1.0；只影响细节 = 0.1 |
-| **HypothesisDiscrimination** | **能否区分多个竞争假设** | 一问就能排除一半假设 = 1.0；对假设无区分力 = 0.1 |
+| **DiagnosticImpact** | 答案是否影响最终诊断/问题定义 | 决定问题类型 = 1.0；只影响细节 = 0.1 |
+| **HypothesisDiscrimination** | **能否区分多个竞争假设**（DIAGNOSIS） | 一问就能排除一半假设 = 1.0；对假设无区分力 = 0.1 |
+| **DimensionAdvance** | **是否推进了一个新的需求维度**（GUIDANCE，v1.5） | 从背景推到目的 = 1.0；同维度补充 = 0.1 |
 | **Uncertainty** | 当前对此有多不确定 | 完全没头绪 = 1.0；有倾向 = 0.6；已能推断 = 0.2 |
 | **Answerability** | 用户是否容易回答 | 选择题 = 1.0；一句话事实 = 0.8；需先查证 = 0.4 |
 | **InteractionCost** | 回答的认知成本 | 选一下 = 1；回忆 = 2；需判断权衡 = 3；需学概念 = 5 |
+
+路径不同，主导因子不同：
+
+```text
+DIAGNOSIS → 看 HypothesisDiscrimination（能否排除竞争假设）
+GUIDANCE  → 看 DimensionAdvance（是否推进 Context → Goal → Scope 的新维度）
+```
 
 ## 2. HypothesisDiscrimination 是核心（v1.3 新增）
 
@@ -36,6 +45,22 @@ DiagnosticImpact
 ```
 
 **当两个假设 confidence 接近时（如 0.5 / 0.4），必须问一个能区分二者的问题，而不是取高的那个直接确诊。**
+
+## 2B. DimensionAdvance 是 GUIDANCE 的核心（v1.5 新增）
+
+```text
+✅「你准备把这个结果用于技术选型、自己实现，还是只是建立认知？」
+   → 一次推进：产物形态 + 下一步                          → 1.0
+
+✅「你为什么需要这个技术总览？」
+   → 从 Direction 推到 Goal                                → 1.0
+
+❌「你是做什么行业的？」（前一轮已确认是安全从业者）
+   → 同维度重复，无效引导，不计入轮数                      → 0.1，不问
+```
+
+**有效引导计数规则**：只有推进了新维度才 +1。
+连续两轮问同一维度 = **Invalid Guidance**，不得据此进入 Problem Definition。
 
 ## 3. 硬性规则
 

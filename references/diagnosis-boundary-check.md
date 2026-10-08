@@ -88,17 +88,17 @@ DOCTOR_DONE 之后，Doctor 不得继续生成任何 Solution 内容。
 
 ```text
 [Doctor Mode · DOCTOR_DONE]
-诊断已确认，交给 Grill-me。
+诊断到这里就结束了。
 已产出 越权漏洞_修复建议栏.md        ← 逻辑冲突（还是在给方案）
 ```
 
-既然已经 DONE，就不该还在产出方案。Doctor 唯一的对外交接对象是 Grill-me 的对抗性验证，走**明确的模块切换**：
+既然已经 DONE，就不该还在产出方案。`DOCTOR_DONE` 是**终态**，Doctor 不交接给任何后续阶段：
 
 ```text
-DOCTOR_DONE → handoff() → GRILL_ME
+DOCTOR_DONE → （协议终止，无 handoff）
 ```
 
-而不是 Doctor 自己继续回答，也不是转入任何以生成方案为目的的环节。
+而不是 Doctor 自己继续回答，也不是转入任何以生成或验证方案为目的的环节。
 
 ## 6. 输出前自检清单
 
