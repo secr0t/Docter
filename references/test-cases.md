@@ -1,14 +1,14 @@
-# 测试案例集 v1.7
+# 测试案例集 v1.8
 
 ## A. 基础验收
 
 ### 1. Direct
-`DNS 是什么？`
+DNS 是什么？
 
 Expected：不进入 Doctor，直接回答。
 
 ### 2. Diagnosis
-`这个 API 可以修改别人的数据。`
+这个 API 可以修改别人的数据。
 
 Expected：进入 DIAGNOSIS，不得直接确诊。
 
@@ -30,16 +30,14 @@ Expected：FAIL，内部重写。
 ## B. GUIDANCE
 
 ### 6. Direction ≠ Goal
-用户：
+用户：我想了解 AI + 网络安全的技术总览。
 
-`我想了解 AI + 网络安全的技术总览。`
-
-Expected：至少继续一个有效轮次确认目的/目标，不能把“技术总览”直接当最终需求。
+Expected：继续有效确认目的/目标，不能把“技术总览”直接当最终需求。
 
 ### 7. Two Effective Rounds
 用户只给出一个宽泛方向。
 
-Expected：至少两轮**不同且有决策价值**的引导；同维度重复不计数。
+Expected：至少两轮不同且有决策价值的引导；重复问题不计数。
 
 ### 8. Initial Complete
 用户已经明确背景、目的、范围、目标、产物。
@@ -52,7 +50,7 @@ Expected：直接结束 Doctor，不为了凑两轮继续追问。
 Expected：不能把主任务改成生产就绪度分析。
 
 ### 10. Answer Drift
-正式回答时出现与 confirmed_goal 无直接关系的长分支。
+正式回答出现与 confirmed_goal 无直接关系的长分支。
 
 Expected：删除、压缩为补充或不展开。
 
@@ -63,32 +61,37 @@ AI：“我猜你是在做 SRC。”
 
 Expected：只记录 inference，用户确认后才能写入 user_facts。
 
-## D. Doctor × Grill-me
+## D. Doctor 完成边界
 
-### 12. Confirmed Handoff
-用户确认诊断准确。
-
-Expected：
-
-`DOCTOR_DONE → HANDOFF_TO_GRILL_ME`
-
-handoff 不包含解决方案。
-
-### 13. Grill-me Rejection
-Grill-me 发现关键证据不足或问题定义错误。
+### 12. Doctor Done
+用户确认问题定义/诊断准确。
 
 Expected：
 
-`GRILL_ME → DOCTOR → 重新取证/诊断`
+~~~text
+DOCTOR_DONE
+~~~
 
-### 14. Solution Ownership
-Grill-me 进入方案比较、遗漏检查和解决路径推演。
+Doctor 停止继续追问或自动设计方案。
 
-Expected：属于 Grill-me，不应反向塞回 Doctor 的诊断阶段。
+### 13. No Forced Handoff
+用户确认诊断后。
+
+Expected：不得自动产生 HANDOFF_TO_GRILL_ME。
+
+### 14. Independent Grill-me
+用户主动要求“挑战一下我的方案/想法”。
+
+Expected：这是独立模式，不计入 Doctor 诊断轮次，也不属于 Doctor 内部状态机。
+
+### 15. Re-entry
+其他模式发现问题定义本身可能错了。
+
+Expected：重新调用 Doctor，而不是恢复旧的 Doctor → Grill-me handoff 状态。
 
 ## E. Regression Record
 
-```text
+~~~text
 Case:
 Mode: DIRECT / GUIDANCE / DIAGNOSIS
 Effective Guidance Rounds:
@@ -99,6 +102,7 @@ Solution Leakage: PASS / FAIL
 Goal Substitution: PASS / FAIL
 Answer Drift: PASS / FAIL
 User Confirmation:
-Handoff: NONE / GRILL_ME
+Doctor Done: PASS / FAIL
+Forced Grill-me Handoff: PASS / FAIL
 Result: PASS / FAIL
-```
+~~~
