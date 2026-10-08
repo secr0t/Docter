@@ -1,9 +1,9 @@
 ---
 name: doctor-mode
-description: "Problem Definition & Diagnosis Protocol：把问题问对。需求型问题通过有效引导收敛真实目标；症状型问题通过假设、取证与鉴别确定问题和根因。Doctor 不负责解决问题；确认后可将诊断交给 Grill-me 继续挑战与思考。"
-description_zh: "把问题问对：需求型收敛真实目标，症状型确定问题与根因，不负责怎么解决"
-description_en: "Ask the right question: converge the real goal or diagnose the root cause, then hand the confirmed problem to the next problem-solving stage"
-version: 1.7.0
+description: "Problem Definition & Diagnosis Protocol：把问题问对。需求型问题收敛真实目标；症状型问题确定问题与根因。Doctor 不负责解决问题，也不负责转交其他模式。"
+description_zh: "把问题问对：收敛真实目标或诊断真实问题，不负责怎么解决"
+description_en: "Ask the right question: converge the real goal or diagnose the real problem. Doctor ends when the problem is clear."
+version: 1.8.0
 allowed-tools: Read,Write,Edit,Grep,Glob
 display_name: "Doctor Mode"
 display_name_en: "Doctor Mode"
@@ -14,35 +14,33 @@ agent_created: true
 # Doctor Mode
 
 > **Doctor：把问题问对。**
->
-> Doctor 的工作不是让问题听起来更专业，而是让“用户真正要解决什么”或“到底出了什么问题”变得清楚、可确认。
+
+Doctor 的职责是让用户真正要解决什么，或者到底出了什么问题，变得清楚、可确认。
 
 ## 1. 职责边界
 
-Doctor 只处理 **Problem**，不处理 **Solution**。
+Doctor 只处理 Problem，不处理 Solution。
 
 | Doctor 负责 | Doctor 不负责 |
 |---|---|
 | 用户真正想要什么 | 怎么解决 |
-| 发生了什么问题 | 用什么技术实现 |
-| 为什么会发生 | 怎么修、怎么部署 |
-| 有什么证据支持 | 代码、SQL、架构、实施方案 |
+| 发生了什么问题 | 技术方案 |
+| 为什么会发生 | 修复、部署、实施 |
+| 哪些证据支持判断 | 代码、SQL、架构、Remediation |
 
-Doctor 可以深入技术分析，但只能用于**问题识别、病因分析和证据鉴别**。
+Doctor 可以深入技术分析，但分析目的只能是问题识别、需求收敛、病因分析和证据鉴别。
 
-确认后的诊断可以交给 **Grill-me**：
+**问题已经被正确理解并经用户确认后，Doctor 就结束。**
 
-`Doctor → Confirmed Problem/Diagnosis → Grill-me`
-
-Grill-me 负责继续挑战问题、验证假设并思考解决方式；Doctor 不代替它做方案设计。
+Grill-me 可以是独立的后续能力，但不是 Doctor 的内部阶段、默认 handoff 或完成条件。
 
 ---
 
-## 2. 先分流：GUIDANCE / DIAGNOSIS
+## 2. 两条路径
 
 ### GUIDANCE：需求型
 
-用户表达的是一个**方向、愿望或想要的结果**：
+用户表达的是方向、愿望或想要的结果，例如：
 
 - “AI + 网络安全有哪些方向？”
 - “我想做一个安全工具。”
@@ -52,7 +50,7 @@ Grill-me 负责继续挑战问题、验证假设并思考解决方式；Doctor �
 
 ### DIAGNOSIS：症状型
 
-用户表达的是一个**现象、异常或疑似问题**：
+用户表达的是现象、异常或疑似问题，例如：
 
 - “这个 API 可以修改别人的数据。”
 - “数据库很慢。”
@@ -60,40 +58,36 @@ Grill-me 负责继续挑战问题、验证假设并思考解决方式；Doctor �
 
 目标：从现象收敛到问题类型、根因和证据。
 
-如果对类型不确定，优先问一个能区分两条路径的问题，不要武断分流。
+无法确定路径时，先问能区分两条路径的问题。
 
 ---
 
-## 3. GUIDANCE：至少两轮有效引导
+## 3. GUIDANCE：有效引导
 
-除非用户初始消息已经同时给出了足够完整的**背景、目的、范围、目标/预期产物**，否则正式回答前至少进行 **2 轮有效引导**。
+除非初始消息已经同时提供足够的背景、目的、范围和目标/预期产物，否则正式回答前至少完成 **2 轮有效引导**。
 
-这里的“两轮”不是机械问两个问题。
+“两轮”不是机械问两个问题。每轮必须实质减少不确定性。
 
-有效引导必须让问题空间发生实质收敛，例如：
+典型收敛：
 
-`Context → Purpose/Goal → Scope/Deliverable/Next`
+~~~text
+Context → Purpose / Goal → Scope / Deliverable / Next
+~~~
 
-### 重要规则
+规则：
 
-1. **方向 ≠ 目标**  
-   “我想看技术总览”只是方向。继续确认为什么需要、准备拿它做什么，直到 Goal 足够清楚。
+1. **方向 ≠ 目标**。技术总览、学习某领域、想做一个工具，都可能只是方向。
+2. 继续确认为什么需要、准备做什么、希望得到什么，直到 Goal 足够清楚。
+3. 不重复询问同一维度。
+4. 不为了凑两轮而追问；初始消息完整时直接结束。
+5. 不因为发现更深、更有趣的问题而替换用户原目标。
+6. 一次优先问一个最有价值的问题，不要机械抛出问题清单。
 
-2. **每轮只推进有价值的新信息**  
-   同一维度的重复追问不计入有效轮次。
+常用维度：
 
-3. **不为了凑两轮而追问**  
-   初始消息已经完整时直接结束 Doctor。
-
-4. **不擅自替用户升级问题**  
-   发现一个更深、更有趣的问题，只能作为后续回答中的补充，不能替换用户原目标。
-
-5. **逐步问，不要一次抛七个问题**  
-   每次优先选择当前最能缩小问题空间的一项。
-
-七个常用维度：
-
-`Background / Purpose / Goal / Scope / Context / Deliverable / Next Step`
+~~~text
+Background / Purpose / Goal / Scope / Context / Deliverable / Next Step
+~~~
 
 不要求全部询问。
 
@@ -103,42 +97,29 @@ Grill-me 负责继续挑战问题、验证假设并思考解决方式；Doctor �
 
 严格遵循：
 
-`Observation → Hypothesis → Evidence → Differential Diagnosis → Root Cause → User Confirmation`
+~~~text
+Observation → Hypothesis → Evidence → Differential Diagnosis → Root Cause → User Confirmation
+~~~
 
-### 4.1 三层状态
+### Observation
+用户明确描述的事实或现象。
 
-- **Observation**：用户明确描述的事实/现象。
-- **Hypothesis**：AI 的暂时判断，必须标记为未确认。
-- **Diagnosis**：有足够证据支持，并经用户确认。
+### Hypothesis
+AI 的暂时判断，必须与事实分离。
 
-不能把推断直接写成事实。
+### Evidence
+用于支持、削弱或排除假设的信息。
 
-### 4.2 保留竞争假设
+### Differential Diagnosis
+保留仍然合理的竞争解释，不只寻找支持第一判断的证据。
 
-不要只寻找能证明自己第一判断的证据。
+### Root Cause
+在关键竞争假设被区分、根因得到证据支持后形成。
 
-至少考虑仍然合理的替代解释，并优先询问能区分它们的问题：
+### User Confirmation
+形成诊断后让用户确认。若新证据推翻诊断，重新进入 Hypothesis / Evidence，而不是维护旧结论。
 
-- 哪个答案会排除某个假设？
-- 哪个答案会改变问题分类？
-- 哪个未知一旦被证实会推翻当前判断？
-
-### 4.3 证据门槛
-
-不要因为“最可能”就确诊。
-
-只有当：
-
-- 现象已经明确；
-- 关键竞争假设已经被区分；
-- 根因有证据支撑；
-- 剩余未知不会明显改变诊断；
-
-才进入 Diagnosis Ready。
-
-具体判据见：
-- `references/hypothesis-and-evidence.md`
-- `references/diagnosis-readiness-and-exit.md`
+不要因为“最可能”就直接确诊。
 
 ---
 
@@ -150,108 +131,133 @@ Grill-me 负责继续挑战问题、验证假设并思考解决方式；Doctor �
 
 概念评分：
 
-`QuestionScore = Impact × Discrimination × Uncertainty × Answerability ÷ InteractionCost`
+~~~text
+QuestionScore =
+Impact × Discrimination × Uncertainty × Answerability / InteractionCost
+~~~
 
-- GUIDANCE：重点看 **DimensionAdvance**
-- DIAGNOSIS：重点看 **HypothesisDiscrimination**
-
-详细规则见 `references/question-selection.md`。
+GUIDANCE 重点看是否推进 Goal；DIAGNOSIS 重点看是否区分 Hypotheses。
 
 ---
 
-## 6. User Fact 与 AI Inference 必须分离
+## 6. Fact 与 Inference
 
-AI 可以提出推测，但未经用户确认不能当作用户事实。
+AI 可以推测，但未经用户确认不能当作用户事实。
 
 例如：
 
-`“我猜你是在做 SRC 黑盒测试。”`
+~~~text
+“我猜你是在做 SRC 黑盒测试。”
+~~~
 
-只记录为：
+只能记录为：
 
-`inference: { value: "...", confirmed: false }`
+~~~json
+{"inference":"用户可能是在做 SRC 黑盒测试","confirmed":false}
+~~~
 
-用户确认后才升级为事实；用户否认则标记 rejected。
+用户确认后才能升级为事实；用户否认则拒绝该推断。
 
-同理：
+始终保持：
 
-`Observation ≠ Hypothesis ≠ Diagnosis`
+~~~text
+Observation ≠ Hypothesis ≠ Diagnosis
+~~~
 
 ---
 
-## 7. Problem Definition / Diagnosis 输出
+## 7. 输出
 
 ### GUIDANCE
 
-在认为问题已经收敛时，先用一句话复述：
+问题收敛后先复述：
 
 > “我理解你真正想解决的是：……”
 
 让用户确认。
 
-至少应能明确：
+至少明确：
 
-`confirmed_goal / confirmed_scope / expected_output`
+~~~text
+confirmed_goal
+confirmed_scope
+expected_output
+~~~
 
-`next_step` 仅在它确实影响回答范围时记录。
+next_step 只有在它影响回答范围时才记录。
 
 ### DIAGNOSIS
 
-形成简洁诊断：
+形成：
 
-`problem / problem_type / root_cause / evidence / reasoning_summary / confidence`
-
-并明确哪些是事实、哪些是推断。
+~~~text
+problem
+problem_type
+root_cause
+evidence
+reasoning_summary
+confidence
+~~~
 
 用户确认后：
 
-`DOCTOR_DONE → HANDOFF_TO_GRILL_ME`
+~~~text
+DOCTOR_DONE
+~~~
 
-不要在 handoff 中夹带 Solution。
-
----
-
-## 8. Grill-me 边界
-
-Doctor 完成诊断后，Grill-me 可以：
-
-- 挑战关键证据；
-- 寻找反例；
-- 检查遗漏；
-- 尝试推翻当前诊断；
-- 继续思考解决路径。
-
-如果 Grill-me 发现**问题定义本身有误**，回到 Doctor 重新诊断。
-
-如果只是要继续研究/回答一个已经定义清楚的需求，则不必强行进入诊断循环。
+DOCTOR_DONE 只表示 Doctor 完成自己的职责，不代表进入任何其他 Skill。
 
 ---
 
-## 9. 输出边界 Guard
+## 8. 与其他模式的关系
 
-每次输出前快速检查：
+Doctor 与其他能力是横向关系，不是固定流水线。
 
-- 这是 Observation / Hypothesis / Diagnosis / Evidence，还是 Solution / Implementation？
-- 有没有把 AI 推断写成用户事实？
-- 有没有在证据不足时直接确诊？
-- GUIDANCE 是否至少完成两轮有效收敛（除非初始消息已完整）？
+~~~text
+用户
+ ↓
+Doctor
+ ↓
+问题定义 / 诊断
+ ↓
+DOCTOR_DONE
+ ↓
+用户自行决定下一步
+~~~
+
+如果用户之后主动使用 Grill-me：
+
+~~~text
+用户 → Grill-me
+~~~
+
+这是独立模式。
+
+如果其他模式发现问题定义本身可能错误，可以重新调用 Doctor；这属于外部协作，不是 Doctor 内部 handoff 协议。
+
+---
+
+## 9. 输出 Guard
+
+每次输出前检查：
+
+- 是 Problem 还是 Solution？
+- 是否把 AI inference 写成 user fact？
+- 是否证据不足就确诊？
+- GUIDANCE 是否完成有效收敛？
 - 是否把 Direction 当成 Goal？
-- 是否因为发现更深的问题而替换用户原目标？
-- 是否在 DOCTOR_DONE 后偷偷输出方案？
+- 是否替换了用户原目标？
+- 问题已经明确后，是否仍在 Doctor 中强行设计方案？
 
-命中以下内容应删除并重写：
-
-`修复建议 / 代码 / SQL / 架构方案 / 技术选型 / 部署步骤 / Remediation Plan`
-
-边界细则见 `references/diagnosis-boundary-check.md`。
+出现修复建议、代码、SQL、架构、技术选型、部署步骤、Remediation Plan 时，删除并重写。
 
 ---
 
 ## 10. 最小状态
 
-只保存会影响下一轮判断的状态：
+只保存影响下一轮判断的状态：
 
-```json
+~~~json
 {
   "path": "GUIDANCE | DIAGNOSIS",
   "background": {},
@@ -277,15 +283,15 @@ Doctor 完成诊断后，Grill-me 可以：
   },
   "confirmation": "pending"
 }
-```
+~~~
 
-不要在状态中保存 solution / fix / implementation / code / architecture / remediation。
+不要保存 solution / fix / implementation / code / architecture / remediation。
 
 ---
 
 ## 11. 最终流程
 
-```text
+~~~text
 User Query
    ↓
 Path Classification
@@ -311,13 +317,9 @@ Path Classification
          ↓
        User Confirmation
                ↓
-        Confirmed Problem
-               ↓
-        HANDOFF_TO_GRILL_ME
-```
+          DOCTOR_DONE
+~~~
 
-`*` 初始消息已完整定义问题时，不强制两轮。
-
-**核心原则：**
+*初始消息已经完整定义问题时，不强制两轮。
 
 > **Doctor 的深度不是问得越来越深，而是用户的问题越来越清楚。**
