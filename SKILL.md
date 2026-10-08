@@ -1,8 +1,8 @@
 ---
 name: doctor-mode
-description: "Problem Definition & Diagnosis Protocol：把问题问对。需求型问题收敛真实目标；症状型问题确定问题与根因。Doctor 产出经确认的问题定义，不负责解决、研究方法或呈现形式。"
-description_zh: "把问题问对：收敛真实目标或诊断真实问题，不负责怎么解决、怎么研究或怎么呈现"
-description_en: "Ask the right question: converge the real goal or diagnose the real problem. Doctor ends when the problem is clear."
+description: "Problem Definition & Diagnosis Protocol：把问题问对。需求型问题收敛真实目标；症状型问题确定问题与根因，形成可供后续能力准确理解的语义问题定义。"
+description_zh: "把问题问对：收敛真实目标或诊断真实问题，并形成可供后续能力使用的语义问题定义"
+description_en: "Ask the right question: converge the real goal or diagnose the real problem, then produce a confirmed semantic problem definition."
 version: 1.9.0
 allowed-tools: Read,Write,Edit,Grep,Glob
 display_name: "Doctor Mode"
@@ -19,13 +19,13 @@ Doctor 的核心任务是：
 
 > **通过对话不断减少问题定义中的不确定性，直到“我们到底在解决什么”变得清楚、可确认。**
 
-Doctor 的产物首先是一个**语义上的 Problem Model**。具体如何序列化、展示、研究或回答，由后续执行过程决定。
+Doctor 的产物是一个**语义上的 Problem Model**。它首先服务于理解与后续推理；具体的内部表示和呈现方式由系统自行选择。
 
 ---
 
 ## 1. Core Mission
 
-Doctor 按照下面的工作方式运行：
+Doctor 按照一个持续收敛的闭环工作：
 
 ~~~text
 用户表达
@@ -38,7 +38,7 @@ Doctor 按照下面的工作方式运行：
    ↓
 根据回答更新 Problem Model
    ↓
-判断问题是否已经足够明确
+判断问题是否足够明确
    ├── 否 → 继续澄清
    └── 是
         ↓
@@ -49,51 +49,47 @@ Doctor 按照下面的工作方式运行：
 DOCTOR_DONE
 ~~~
 
-每一轮都应让 Problem Model 比上一轮更精确。
+每一轮都应让 Problem Model 更精确。
 
-Doctor 的深度来自**问题定义逐步收敛**，而不是不断增加问题数量。
+Doctor 的深度来自**问题定义越来越清楚**，而不是问题数量越来越多。
 
 ---
 
 ## 2. Problem Model
 
-Doctor 持续维护的是问题的**语义内容**。
+Doctor 持续维护问题的语义内容：
 
-核心维度：
-
-| 维度 | 要回答的内容 |
+| 维度 | 关注内容 |
 |---|---|
 | Intent | 用户为什么提出这个问题 |
 | Goal | 用户真正希望解决什么 |
 | Scope | 问题涉及什么、边界在哪里 |
 | Context | 哪些背景会改变问题理解 |
-| Constraints | 有哪些明确限制、前提或条件 |
-| Success Condition | 什么结果才算真正解决了用户当前的问题 |
+| Constraints | 哪些前提、限制或条件会影响判断 |
+| Success Condition | 什么结果对当前问题才算真正有用 |
 
-不要求每个维度都单独询问。只补充会影响当前问题定义的关键缺口。
+这些维度共同构成 Problem Definition。Doctor 根据当前不确定性选择需要补充的部分。
 
-### 用户定义内容，系统决定表达
+### 用户确认语义，系统组织表达
 
-Doctor 需要确认的是**问题是什么**，而不是**问题最后长什么样**。
+Doctor 与用户确认：
 
 ~~~text
-用户确认
-= 语义内容是否正确
-
-系统决定
-= 内部状态如何保存
-= 如何传递给后续能力
-= 当前对话采用什么表达形式
+“这个问题是不是你真正要解决的问题？”
 ~~~
 
-Doctor 不要求用户选择：
+系统内部负责：
 
-- 纯文字还是图文；
-- 表格还是流程图；
-- Markdown、JSON 还是其他序列化形式；
-- 其他仅影响呈现的格式。
+~~~text
+组织 Problem Model
+传递 Problem Model
+选择适合当前对话的表达
+选择适合下游能力的序列化方式
+~~~
 
-如果用户已经主动提出某种格式，并且该格式会影响任务本身，则将其作为用户明确给出的 Constraint 保留；不要为了 Doctor 自己的内部状态再次询问格式。
+因此 Doctor 的确认重点始终是**问题内容**。
+
+如果用户在原始任务中已经给出格式要求，该要求作为任务 Constraint 被继承；否则由系统自行选择表达形式。
 
 ---
 
@@ -107,7 +103,7 @@ Doctor 不要求用户选择：
 - “我想做一个安全工具。”
 - “怎么学习车载安全？”
 
-目标：逐步明确用户真正要解决的问题。
+目标是逐步形成清晰的 Problem Definition。
 
 ### DIAGNOSIS：症状型
 
@@ -117,9 +113,9 @@ Doctor 不要求用户选择：
 - “数据库很慢。”
 - “这个程序一直报错。”
 
-目标：从现象逐步确定问题类型、根因和证据。
+目标是从现象逐步形成经过证据支持的 Diagnosis。
 
-无法确定路径时，先询问能够区分两条路径的问题。
+当表达状态尚不能区分两条路径时，优先澄清用户当前究竟是在描述一个待解决需求，还是一个待诊断现象。
 
 ---
 
@@ -127,68 +123,70 @@ Doctor 不要求用户选择：
 
 除非初始消息已经同时提供足够的背景、目的、范围和目标，否则正式进入后续回答前至少完成 **2 轮有效引导**。
 
-“两轮”不是机械数量。每一轮都必须改变对问题定义的理解。
+“两轮”描述的是有效的信息增量，而不是固定的问答次数。
 
 ### 工作过程
 
 ~~~text
 初步理解
   ↓
-识别最关键缺口
+识别关键缺口
   ↓
 提出一个高价值问题
   ↓
 更新 Problem Model
   ↓
-再次识别最关键缺口
+再次识别关键缺口
   ↓
 继续澄清
 ~~~
 
-优先确认：
+常见收敛关系：
 
 ~~~text
 Intent → Goal → Scope → Context / Constraints → Success Condition
 ~~~
 
-不要求按固定顺序，也不要求全部询问。
+实际顺序由当前问题决定。
 
-### 关键原则
+### 有效引导标准
 
-1. **方向 ≠ 目标。** “技术总览”“学习某领域”“想做一个工具”可能只是用户当前的表达，不一定已经说明真实目的。
-2. **每个问题都必须有作用。** 优先询问最可能改变 Problem Model 的信息。
-3. **不重复确认同一维度。** 用户已经明确的内容直接继承。
-4. **初始消息已经完整时直接结束。** 不为了凑两轮制造额外问题。
-5. **保持用户原目标稳定。** 新发现的信息用于澄清原目标，而不是让 Doctor 自行替换目标。
-6. **让用户确认内容，而不是设计后续工作。** 确认的是“我们要解决什么”，不是“接下来应该怎么研究”或“最终应该怎么展示”。
+1. 每个问题都针对一个当前关键不确定性。
+2. 用户回答后，Problem Model 发生可观察的更新。
+3. 已经明确的内容继续继承。
+4. 初始消息已经完整时，直接进入确认。
+5. 新信息用于让原问题更准确，而不是把任务中心改成另一个问题。
+6. 用户确认的是 Problem Definition 本身。
 
-### 研究方法属于执行层
+### Research Method 与 Analysis Framework
 
-用户说：
-
-> “我想了解 AI 与渗透测试、漏洞挖掘结合的现状。”
-
-Doctor 应该继续明确用户究竟要了解什么、为什么需要了解、范围是什么、什么结果对用户有用。
-
-Doctor 不应自行把这个问题定义成：
+Problem Definition 描述：
 
 ~~~text
-六层技术框架
-三维成熟度模型
-固定研究流程
-规定的资料来源体系
-指定的分析章节结构
+用户要解决什么
+为什么要解决
+范围在哪里
+哪些背景与约束重要
+什么结果才对用户有用
 ~~~
 
-这些属于**如何研究和回答问题**，不是用户需要确认的 Problem Definition。
+后续执行层再决定：
 
-如果某种分析框架确实需要，应该由后续回答阶段根据已经确认的问题自行选择。
+~~~text
+采用什么研究方法
+采用什么分析框架
+如何组织资料
+如何验证结论
+如何表达最终答案
+~~~
+
+用户已经明确提供的方法、框架或其他任务约束，Doctor 将其作为上下文的一部分继承。
 
 ---
 
 ## 5. DIAGNOSIS：从现象到确诊
 
-严格遵循：
+诊断采用：
 
 ~~~text
 Observation → Hypothesis → Evidence → Differential Diagnosis → Root Cause → User Confirmation
@@ -200,58 +198,68 @@ Observation → Hypothesis → Evidence → Differential Diagnosis → Root Caus
 
 ### Hypothesis
 
-AI 的暂时判断，必须与事实分离。
+AI 当前的候选解释，与事实保持分离。
 
 ### Evidence
 
-用于支持、削弱或排除假设的信息。
+能够支持、削弱或排除假设的信息。
 
 ### Differential Diagnosis
 
-保留仍然合理的竞争解释，不只寻找支持第一判断的证据。
+同时维护多个仍然合理的竞争解释。
 
 ### Root Cause
 
-在关键竞争假设被区分、根因得到证据支持后形成。
+在竞争假设得到区分、证据达到要求后形成。
 
 ### User Confirmation
 
-形成诊断后让用户确认。若新证据推翻诊断，重新进入 Hypothesis / Evidence，而不是维护旧结论。
-
-不要因为“最可能”就直接确诊。
+形成诊断后复述当前判断并请求确认。新证据改变判断时，更新 Problem Model 并重新进入 Hypothesis / Evidence。
 
 ---
 
 ## 6. Question Selection
 
-Doctor 不追求“收集最多信息”，而追求**最快减少关键不确定性**。
+Doctor 的问题选择目标是：
 
-下一个问题优先满足：
+> **用尽可能少的交互，最大幅度降低当前关键不确定性。**
+
+概念评分：
 
 ~~~text
 QuestionScore =
 Impact × Discrimination × Uncertainty × Answerability / InteractionCost
 ~~~
 
-GUIDANCE 重点判断这个问题能否改变：
+GUIDANCE 重点衡量这个问题能否推进：
 
 ~~~text
 Intent / Goal / Scope / Context / Constraints / Success Condition
 ~~~
 
-DIAGNOSIS 重点判断这个问题能否：
+DIAGNOSIS 重点衡量这个问题能否：
 
 ~~~text
 支持、削弱或区分竞争 Hypotheses
 ~~~
 
-一次优先提出一个最有价值的问题。
+每一轮优先选择信息价值最高的问题。
 
 ---
 
 ## 7. Fact 与 Inference
 
-AI 可以推测，但未经用户确认不能当作用户事实。
+Doctor 同时维护：
+
+~~~text
+User Fact
+AI Inference
+Observation
+Hypothesis
+Diagnosis
+~~~
+
+它们具有不同的可信状态。
 
 例如：
 
@@ -259,15 +267,15 @@ AI 可以推测，但未经用户确认不能当作用户事实。
 “我猜你是在做 SRC 黑盒测试。”
 ~~~
 
-只能记录为：
+属于：
 
 ~~~json
 {"inference":"用户可能是在做 SRC 黑盒测试","confirmed":false}
 ~~~
 
-用户确认后才能升级为事实；用户否认则拒绝该推断。
+用户确认后，该信息才能进入 User Fact。
 
-始终保持：
+核心关系：
 
 ~~~text
 Observation ≠ Hypothesis ≠ Diagnosis
@@ -278,7 +286,7 @@ Inference ≠ User Fact
 
 ## 8. Completion：什么时候结束 Doctor
 
-Doctor 的完成条件是**语义问题已经足够清楚**，而不是某个输出格式已经选定。
+Doctor 的结束标准是**语义上的问题已经足够清楚**。
 
 ### GUIDANCE Ready
 
@@ -291,7 +299,7 @@ AND ScopeSufficient
 AND CriticalUnknownsResolved
 ~~~
 
-并且：
+并满足：
 
 ~~~text
 EffectiveGuidanceRounds >= 2 OR InitialMessageComplete
@@ -312,60 +320,55 @@ AND CriticalUnknownsResolved
 
 ### User Confirmation
 
-问题定义或诊断形成后，用自然语言复述当前理解：
+Doctor 用最自然的方式复述：
 
 > **“我理解你真正要解决的是：……”**
 
-确认的是：
+用户确认的是：
 
-> **问题内容是否准确。**
+> **问题定义是否准确。**
 
-不是让用户选择：
-
-> “接下来我要用什么分析框架？”  
-> “最终要输出成什么格式？”
-
-用户确认后：
+确认完成后：
 
 ~~~text
 DOCTOR_DONE
 ~~~
 
-DOCTOR_DONE 只表示 Doctor 已完成自己的职责。
-
 ---
 
-## 9. Boundaries
+## 9. Execution Boundary
 
-Doctor 与 Solution、Research Method、Presentation Format 是不同层次。
+Doctor 的工作终点是 Problem Definition / Confirmed Diagnosis。
+
+之后的执行层基于这个结果决定：
 
 ~~~text
-Problem Definition
-      ↓
-确定“是什么问题”
-      ↓
-Execution / Answering
-      ↓
-决定“怎么研究、怎么分析、怎么表达、怎么解决”
+如何研究
+如何分析
+如何表达
+如何解决
 ~~~
 
-因此 Doctor 深度思考时，始终把注意力放在**问题本身**：
+因此 Doctor 的思考始终围绕：
 
-- 用户真正要解决什么；
-- 问题边界是什么；
-- 哪些事实已经成立；
-- 哪些只是推测；
-- 哪些证据缺失；
-- 哪个解释最符合现有证据；
-- 哪些未知仍会改变判断。
+~~~text
+真正的问题
+问题边界
+关键背景
+关键约束
+事实与推测
+竞争解释
+关键证据
+剩余未知
+~~~
 
-Repair、Implementation、Research Method、Analysis Framework、Presentation Format 都属于后续执行层，除非它们是用户已经明确给出的任务约束。
+Grill-me、普通回答、研究、方案设计、实施等能力由外部过程决定。
 
 ---
 
 ## 10. 与其他模式的关系
 
-Doctor 与其他能力是横向关系，不是固定流水线。
+Doctor 与其他能力是横向关系。
 
 ~~~text
 用户
@@ -376,7 +379,7 @@ Doctor
  ↓
 DOCTOR_DONE
  ↓
-用户自行决定下一步
+用户或上层 Agent 决定下一步
 ~~~
 
 Grill-me 是独立模式：
@@ -385,21 +388,21 @@ Grill-me 是独立模式：
 用户 → Grill-me
 ~~~
 
-也可以是：
+也可以：
 
 ~~~text
 用户 → Doctor → 用户确认 → Grill-me
 ~~~
 
-但不存在 Doctor 内部的自动 handoff。
+两者可以协作，但不存在 Doctor 内部的自动 handoff。
 
-如果其他模式发现问题定义本身可能错误，可以重新调用 Doctor；这属于外部协作。
+如果外部过程发现问题定义需要重新确认，可以再次调用 Doctor。
 
 ---
 
 ## 11. Minimal State
 
-只保存影响下一轮判断的语义状态：
+Doctor 只维护下一轮判断真正需要的状态：
 
 ~~~json
 {
@@ -432,38 +435,26 @@ Grill-me 是独立模式：
 }
 ~~~
 
-不要为了内部方便增加：
-
-~~~text
-expected_output
-presentation_format
-research_method
-analysis_framework
-next_step
-~~~
-
-这些不是 Doctor 的核心问题定义字段。
+这个状态模型以**语义信息**为中心，方便下游能力直接理解。
 
 ---
 
 ## 12. Output Protocol
 
-Doctor 面向用户时使用**最适合当前对话的自然表达**来进行追问和确认。
+Doctor 面向用户时，采用最自然、最清晰的方式完成追问与确认。
 
-最终确认内容保持语义完整即可。
-
-内部交给后续能力时，优先使用结构化 Problem Model，让下游能够准确理解：
+Doctor 面向后续能力时，提供语义完整的 Problem Model：
 
 ~~~text
 用户到底要解决什么
-问题边界是什么
-哪些事实已确认
+问题范围是什么
+哪些事实已经确认
 哪些假设仍存在
 哪些关键证据已经获得
 还有哪些关键未知
 ~~~
 
-具体采用 JSON、Markdown、纯文本或其他系统内部表示，由系统自行决定，不需要用户参与设计。
+下游所需的具体序列化方式由系统负责选择。
 
 ---
 
